@@ -1,148 +1,300 @@
-# Terraform AWS Infrastructure Setup
+# Terraform AWS Infrastructure Provisioning using Infrastructure as Code (IaC)
 
-Minor project demonstrating Infrastructure as Code (IaC) principles by provisioning a
-basic AWS network + compute stack with Terraform: a custom VPC, a public subnet with
-Internet Gateway and route table, a security group allowing SSH, and an EC2 instance
-reachable over SSH using an auto-generated key pair.
+An Infrastructure as Code (IaC) project that automates the provisioning of a complete AWS networking environment using **Terraform**. The project creates a Virtual Private Cloud (VPC), public subnet, Internet Gateway, route table, security group, SSH key pair, and an Amazon EC2 instance, enabling secure and repeatable infrastructure deployment.
 
-![Architecture Diagram](architecture-diagram.svg)
+---
 
-## Architecture
+# Overview
 
-```
-Internet
-   |
-Internet Gateway
-   |
-Route Table (0.0.0.0/0 -> IGW)
-   |
-VPC (10.0.0.0/16)
-  └── Public Subnet (10.0.1.0/24)
-        ├── Security Group (allow inbound TCP 22)
-        └── EC2 Instance (t2.micro, public IP, key-pair auth)
-```
+This project demonstrates how Terraform can be used to provision cloud infrastructure on AWS in a fully automated manner. Instead of manually creating resources through the AWS Management Console, all infrastructure components are defined declaratively in Terraform configuration files.
 
-## Repository structure
+The infrastructure includes a custom VPC, networking resources, security configuration, automatic SSH key generation, and an EC2 instance running Ubuntu Server.
+
+---
+
+# Architecture
 
 ```
-terraform-aws-infra/
-├── provider.tf                  # Terraform + AWS/TLS/local provider config
-├── variables.tf                 # All configurable inputs (CIDR, AMI, instance type, etc.)
-├── vpc.tf                       # Custom VPC
-├── subnet.tf                    # Public subnet
-├── igw.tf                       # Internet Gateway
-├── route_table.tf               # Route table + association (0.0.0.0/0 -> IGW)
-├── security_group.tf            # SG allowing inbound SSH (port 22)
-├── key_pair.tf                  # Generates SSH key pair, registers with AWS, saves .pem
-├── ec2.tf                       # EC2 instance in the public subnet
-├── outputs.tf                   # VPC ID, subnet ID, public IP, ready SSH command
-├── terraform.tfvars.example     # Sample variable values (copy -> terraform.tfvars)
-├── .gitignore                   # Keeps state files, .pem keys, tfvars out of git
-└── README.md
+                Terraform
+                    │
+                    ▼
+           AWS Infrastructure
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+       VPC              Internet Gateway
+        │                       │
+        └───────────┬───────────┘
+                    │
+              Public Subnet
+                    │
+             Route Table
+                    │
+          Security Group (SSH)
+                    │
+            EC2 Ubuntu Instance
+                    │
+             SSH Remote Access
 ```
 
-## Prerequisites
+---
 
-1. An AWS account with an IAM user/role that has permission to create VPC, EC2, and
-   related networking resources.
-2. [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3 installed locally.
-3. [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-   installed and configured (`aws configure`) with your Access Key ID / Secret Access Key.
-4. An SSH client (built into Linux/macOS/WSL; use PuTTY or OpenSSH-on-Windows on Windows).
+# Infrastructure Components
 
-## Step-by-step execution
+| Component           | Purpose                     |
+| ------------------- | --------------------------- |
+| Terraform           | Infrastructure provisioning |
+| AWS VPC             | Isolated virtual network    |
+| Public Subnet       | Hosts the EC2 instance      |
+| Internet Gateway    | Internet connectivity       |
+| Route Table         | Routes outbound traffic     |
+| Security Group      | Allows SSH access           |
+| AWS Key Pair        | Secure authentication       |
+| Ubuntu EC2 Instance | Virtual machine             |
 
-### 1. Configure AWS credentials
+---
+
+# Project Structure
+
+```
+.
+├── README.md
+├── .gitignore
+└── terraform/
+    ├── provider.tf
+    ├── variables.tf
+    ├── terraform.tfvars
+    ├── terraform.tfvars.example
+    ├── vpc.tf
+    ├── subnet.tf
+    ├── igw.tf
+    ├── route_table.tf
+    ├── security_group.tf
+    ├── key_pair.tf
+    ├── ec2.tf
+    ├── outputs.tf
+    └── terraform-aws-demo-key.pem (generated after apply)
+```
+
+---
+
+# Prerequisites
+
+Install the following software before running the project:
+
+* Terraform
+* AWS CLI
+* Git
+* AWS Account
+* PowerShell or Command Prompt
+* SSH Client
+
+---
+
+# AWS Configuration
+
+Configure your AWS credentials before deploying the infrastructure.
+
 ```bash
 aws configure
-# AWS Access Key ID:     <your key>
-# AWS Secret Access Key: <your secret>
-# Default region name:   ap-south-1   (or your preferred region)
-# Default output format: json
 ```
 
-### 2. Clone/copy this repo and set variables
+Provide:
+
+* AWS Access Key ID
+* AWS Secret Access Key
+* Default Region (`ap-south-1`)
+* Output Format (`json`)
+
+Verify the configuration:
+
 ```bash
-cd terraform-aws-infra
-cp terraform.tfvars.example terraform.tfvars
+aws sts get-caller-identity
 ```
-Open `terraform.tfvars` and adjust as needed. Important:
-- `ami_id` must be a valid AMI **for the region you set in `aws_region`**. The default
-  in this repo is an Amazon Linux 2023 AMI for `ap-south-1`. If you use a different
-  region, look up the current AMI ID in the EC2 console (Launch Instance -> AMI Catalog)
-  and replace it.
-- For real-world safety, set `allowed_ssh_cidr` to `YOUR_PUBLIC_IP/32` instead of
-  `0.0.0.0/0`. Find your IP with `curl ifconfig.me`.
 
-### 3. Initialize Terraform
+---
+
+# Deployment Steps
+
+Navigate to the Terraform directory.
+
+```bash
+cd terraform
+```
+
+Initialize Terraform.
+
 ```bash
 terraform init
 ```
-Downloads the AWS, TLS, and local providers. **Screenshot this.**
 
-### 4. Review the execution plan
+Validate the configuration.
+
+```bash
+terraform validate
+```
+
+Preview the infrastructure changes.
+
 ```bash
 terraform plan
 ```
-Shows exactly what will be created (VPC, subnet, IGW, route table, SG, key pair, EC2 —
-9 resources). **Screenshot this.**
 
-### 5. Apply
+Deploy the infrastructure.
+
 ```bash
 terraform apply
 ```
-Type `yes` when prompted. Takes about 1-2 minutes. **Screenshot the "Apply complete!"
-output** — it will show your outputs including `instance_public_ip` and `ssh_command`.
 
-### 6. Verify in the AWS Console
-Open the AWS Console → VPC and EC2 dashboards and confirm:
-- The new VPC with your CIDR block
-- The public subnet
-- The Internet Gateway attached to the VPC
-- The route table with a `0.0.0.0/0 -> igw-xxxx` route
-- The security group with an inbound rule for port 22
-- The running EC2 instance with a public IP
+Type:
 
-**Screenshot each of these consoles.**
+```
+yes
+```
 
-### 7. Connect via SSH
-Terraform already generated a private key file named
-`terraform-aws-demo-key.pem` in this directory (permissions set to `0400`
-automatically). Use the output SSH command directly:
+when prompted.
+
+Terraform will create:
+
+* VPC
+* Public Subnet
+* Internet Gateway
+* Route Table
+* Route Table Association
+* Security Group
+* SSH Key Pair
+* Ubuntu EC2 Instance
+
+---
+
+# Outputs
+
+After deployment, Terraform displays useful outputs such as:
+
+* Instance ID
+* Public IP Address
+* VPC ID
+* Subnet ID
+* Security Group ID
+* SSH connection command
+
+Example:
 
 ```bash
-terraform output ssh_command
-# copy the printed command, or run manually:
+instance_public_ip = 13.xxx.xxx.xxx
 
-chmod 400 terraform-aws-demo-key.pem
-ssh -i terraform-aws-demo-key.pem ec2-user@<instance_public_ip>
+ssh -i terraform-aws-demo-key.pem ubuntu@13.xxx.xxx.xxx
 ```
-> Username depends on the AMI: `ec2-user` for Amazon Linux, `ubuntu` for Ubuntu AMIs.
 
-**Screenshot the successful SSH login** (showing the shell prompt on the EC2 instance).
+---
 
-### 8. Clean up (avoid ongoing AWS charges)
+# Connecting to the EC2 Instance
+
+Terraform automatically generates the private SSH key.
+
+Connect using:
+
+```bash
+ssh -i terraform-aws-demo-key.pem ubuntu@<public-ip>
+```
+
+Example verification commands:
+
+```bash
+hostname
+
+cat /etc/os-release
+
+uname -a
+```
+
+---
+
+# Security
+
+The project currently allows SSH access from:
+
+```
+0.0.0.0/0
+```
+
+For production environments, replace this with your own public IP address:
+
+```
+YOUR_PUBLIC_IP/32
+```
+
+to improve security.
+
+---
+
+# Verification
+
+After deployment, verify the infrastructure in the AWS Management Console.
+
+Check:
+
+* EC2 Instance
+* VPC
+* Public Subnet
+* Internet Gateway
+* Route Table
+* Security Group
+
+Also verify SSH connectivity to the EC2 instance.
+
+---
+
+# Destroy Infrastructure
+
+After completing testing, remove all resources to avoid unnecessary AWS charges.
+
 ```bash
 terraform destroy
 ```
-Type `yes` to confirm. Confirm in the console that all resources were removed.
-**Screenshot this too** if your report wants to show the full lifecycle.
 
-## Notes on design choices
+Type:
 
-- **Configurable CIDR**: `vpc_cidr` and `public_subnet_cidr` are variables (not
-  hardcoded), satisfying the "CIDR block configurable via variables" requirement.
-- **Key pair**: generated automatically via the `tls_private_key` + `aws_key_pair`
-  resources so the project is fully reproducible without manually creating a key in
-  the console first — the private key is saved locally and git-ignored.
-- **Security**: the SSH security group ingress CIDR is also a variable
-  (`allowed_ssh_cidr`), so it's easy to lock down to a single IP instead of the world.
-- **State/secrets hygiene**: `.gitignore` excludes `*.tfstate`, `*.pem`, and
-  `terraform.tfvars` so no credentials or generated secrets are ever committed.
+```
+yes
+```
 
-## Deliverables checklist
+when prompted.
 
-- [x] Terraform files (this repo)
-- [ ] Screenshots (add yours to a `screenshots/` folder as you complete steps 3-8 above)
-- [x] Architecture diagram (`architecture-diagram.svg`)
-- [x] Project report (`PROJECT_REPORT.md`)
+Terraform will delete all created AWS resources.
+
+---
+
+# Features
+
+* Infrastructure as Code using Terraform
+* Automated AWS resource provisioning
+* Custom VPC creation
+* Public subnet configuration
+* Internet Gateway setup
+* Route table configuration
+* Security group configuration
+* Automatic SSH key generation
+* Ubuntu EC2 instance deployment
+* Terraform outputs for quick access
+* Repeatable and reproducible deployments
+
+---
+
+# Future Improvements
+
+* Private subnet support
+* NAT Gateway
+* Multi-AZ deployment
+* Auto Scaling Group
+* Application Load Balancer
+* Remote Terraform state using Amazon S3
+* State locking with DynamoDB
+* Modular Terraform architecture
+* CI/CD integration using GitHub Actions or Jenkins
+
+---
+
+# License
+
+This project is intended for educational purposes and demonstrates Infrastructure as Code (IaC) using Terraform and Amazon Web Services (AWS).
