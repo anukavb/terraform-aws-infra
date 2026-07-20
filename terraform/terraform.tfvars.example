@@ -1,0 +1,11 @@
+# Copy this file to terraform.tfvars and adjust values as needed.
+# terraform.tfvars is git-ignored so you never commit secrets/settings by accident.
+
+aws_region          = "ap-south-1"
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+availability_zone   = "ap-south-1a"
+project_name        = "terraform-aws-demo"
+ami_id              = "ami-0f5ee92e2d63afc18"
+instance_type       = "t2.micro"
+allowed_ssh_cidr    = "0.0.0.0/0"   # replace with YOUR_IP/32 for safety

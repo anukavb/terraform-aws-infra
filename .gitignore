@@ -1,0 +1,23 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Variable files that may contain settings you don't want to commit
+terraform.tfvars
+*.auto.tfvars
+
+# Generated SSH private key - NEVER commit this
+*.pem
+
+# OS files
+.DS_Store
